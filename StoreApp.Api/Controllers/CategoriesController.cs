@@ -58,28 +58,14 @@ public class CategoriesController : ControllerBase
             return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
         }
 
-        try
-        {
-            await _categoryService.UpdateCategoryAsync(id, dto);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _categoryService.UpdateCategoryAsync(id, dto);
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
-        try
-        {
-            await _categoryService.DeleteCategoryAsync(id);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _categoryService.DeleteCategoryAsync(id);
+        return NoContent();
     }
 }

@@ -58,28 +58,14 @@ public class ProductsController : ControllerBase
             return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
         }
 
-        try
-        {
-            await _productService.UpdateProductAsync(id, dto);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _productService.UpdateProductAsync(id, dto);
+        return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
-        try
-        {
-            await _productService.DeleteProductAsync(id);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return NotFound(ex.Message);
-        }
+        await _productService.DeleteProductAsync(id);
+        return NoContent();
     }
 }

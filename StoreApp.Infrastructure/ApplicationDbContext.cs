@@ -22,6 +22,9 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Name).IsRequired().HasMaxLength(100);
             entity.Property(c => c.Description).HasMaxLength(500);
+
+            // فلتر عام لاستبعاد العناصر المحذوفة ناعماً تلقائياً
+            entity.HasQueryFilter(c => !c.IsDeleted);
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -36,6 +39,9 @@ public class ApplicationDbContext : DbContext
                   .WithMany(c => c.Products)
                   .HasForeignKey(p => p.CategoryId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            // فلتر عام لاستبعاد المنتجات المحذوفة ناعماً تلقائياً
+            entity.HasQueryFilter(p => !p.IsDeleted);
         });
     }
 }
