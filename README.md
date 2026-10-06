@@ -1,33 +1,55 @@
-# StoreApp API (.NET 8 Clean Architecture)
+# Store Management Web API
 
-StoreApp هو نظام Backend لمتجر تجاري مبني باستخدام أحدث معايير هندسة البرمجيات النظيفة (Clean Architecture) وفصل المسؤوليات.
-
-## 🚀 التقنيات المستخدمة
-* **.NET 8** (ASP.NET Core Web API)
-* **Entity Framework Core** (ORM & SQL Server)
-* **FluentValidation** (التحقق من صحة البيانات DTOs)
-* **LINQ & Repository Pattern** (إدارة البيانات وتجريد قاعدة البيانات)
+A robust, RESTful Web API built with **ASP.NET Core** and **C#**, designed following **Clean Architecture** principles and software design best practices. The application provides complete CRUD operations for managing product categories and products with built-in validation, soft deletion, and centralized error handling.
 
 ---
 
-## 📂 هيكلية المشروع (Architecture)
-تم تقسيم الحل إلى الطبقات الرئيسية التالية:
-1. **Store.Domain**: يضم الكيانات الأساسية (Entities) مثل `Product` و `Category`.
-2. **StoreApp.Application**: يضم خدمات المنطق البرمجي (Services)، واجهات المستودعات (Interfaces)، الـ DTOs، وقواعد التحقق (Validators)، والاستثناءات المخصصة (`NotFoundException`, `ConflictException`).
-3. **StoreApp.Infrastructure**: يضم سياق قاعدة البيانات (`ApplicationDbContext`)، تطبيق الـ Repositories، وبيانات التهيئة الأولية (`DbSeeder`).
-4. **StoreApp.Api**: طبقة الـ Controllers ومعالجة الأخطاء المركزية (Global Error Handling Middleware).
+## 🛠️ Tech Stack & Key Packages
+
+- **Framework:** .NET 8.0 / ASP.NET Core Web API
+- **Database:** Microsoft SQL Server
+- **ORM:** Entity Framework Core 8.0
+- **Validation:** FluentValidation
+- **Documentation:** Swagger / OpenAPI
+- **Architecture Pattern:** Clean Architecture (Domain, Application, Infrastructure, API)
 
 ---
 
-## ⚙️ إعداد وتشغيل المشروع
+## 🏗️ Architectural & Technical Decisions
 
-### 1. المتطلبات الأساسية
-* تثبيت [.NET 8 SDK](https://dotnet.microsoft.com/)
-* تثبيت **SQL Server** (أو LocalDB)
+1. **Clean Architecture (Separation of Concerns):**
+   - **Domain:** Contains core entities (`Product`, `Category`) without external dependencies.
+   - **Application:** Contains DTOs, Repository/Service Interfaces, Custom Exceptions (`NotFoundException`, `ConflictException`), and FluentValidation rules.
+   - **Infrastructure:** Handles EF Core `ApplicationDbContext`, Migrations, Data Seeding, and Repository implementations.
+   - **API:** Contains API Controllers, Middleware, and Dependency Injection registration.
 
-### 2. إعداد الـ Connection String
-تأكدي من ضبط إعدادات الاتصال بقاعدة البيانات في ملف `appsettings.json`:
-"ConnectionStrings": {
-  "DefaultConnection": "Server=localhost;Database=StoreInventoryDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
-}
+2. **Repository & Service Patterns:**
+   Decouples business logic from data access code, facilitating maintainability and unit testability.
 
+3. **Global Exception Handling Middleware:**
+   Centralized middleware (`ErrorHandlingMiddleware`) catches all unhandled exceptions, mapping custom domain exceptions (`NotFoundException` -> `404 Not Found`, `ConflictException` -> `409 Conflict`) to standardized HTTP JSON responses.
+
+4. **Input Validation:**
+   Utilizes **FluentValidation** to enforce strict data contracts on incoming DTOs prior to domain processing.
+
+5. **Soft Delete Mechanism:**
+   Entities feature `IsDeleted` and `DeletedAt` fields to prevent physical loss of historical data while keeping queries filtered.
+
+6. **Unique Constraints & Referential Integrity:**
+   - SKU uniqueness is enforced both at the database index level and within application service validation.
+   - Deletion of categories containing active products is prevented to enforce referential consistency.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download)
+- [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) or SQL Server Express / LocalDB
+
+### Configuration & Setup
+
+1. **Clone the Repository:**
+   ```bash
+   git clone [https://github.com/YOUR_USERNAME/StoreApp.git](https://github.com/YOUR_USERNAME/StoreApp.git)
+   cd StoreApp
