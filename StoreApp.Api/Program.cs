@@ -5,6 +5,7 @@ using StoreApp.Application.Services;
 using StoreApp.Infrastructure.Repositories;
 using FluentValidation;
 using StoreApp.Application.Validators;
+using StoreApp.Api.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,7 +46,7 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "An error occurred while seeding the database.");
     }
 }
-
+app.UseMiddleware<ErrorHandlingMiddleware>(); 
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

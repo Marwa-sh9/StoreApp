@@ -1,5 +1,6 @@
 ﻿using StoreApp.Application.DTOs;
 using StoreApp.Application.Interfaces;
+using StoreApp.Application.Exceptions;
 using Store.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace StoreApp.Application.Services;
 public class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IProductRepository _productRepository;
 
-    public CategoryService(ICategoryRepository categoryRepository)
+    public CategoryService(ICategoryRepository categoryRepository, IProductRepository productRepository)
     {
         _categoryRepository = categoryRepository;
+        _productRepository = productRepository;
     }
 
     public async Task<IEnumerable<CategoryDto>> GetAllCategoriesAsync()
@@ -24,8 +27,6 @@ public class CategoryService : ICategoryService
             Description = c.Description
         });
     }
-
-
 
     public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto dto)
     {
@@ -44,6 +45,7 @@ public class CategoryService : ICategoryService
             Description = category.Description
         };
     }
+
     public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
     {
         var category = await _categoryRepository.GetByIdAsync(id);
@@ -60,7 +62,7 @@ public class CategoryService : ICategoryService
     public async Task UpdateCategoryAsync(int id, CreateCategoryDto dto)
     {
         var category = await _categoryRepository.GetByIdAsync(id);
-        if (category == null) throw new Exception("Category not found");
+        if (category == null) throw new NotFoundException("Category not found");
 
         category.Name = dto.Name;
         category.Description = dto.Description;
@@ -72,7 +74,15 @@ public class CategoryService : ICategoryService
     public async Task DeleteCategoryAsync(int id)
     {
         var category = await _categoryRepository.GetByIdAsync(id);
-        if (category == null) throw new Exception("Category not found");
+        if (category == null) throw new NotFoundException("Category not found");
+
+        // منع الحذف وإرجاع Conflict (409) في حال وجود منتجات فعّالة مرتبطة بهذا التصنيف
+        var products = await _productRepository.GetAllAsync();
+        var hasActiveProducts = products.Any(p => p.CategoryId == id && !p.IsDeleted);
+        if (hasActiveProducts)
+        {
+            throw new ConflictException("Cannot delete this category because it contains active products.");
+        }
 
         // تفعيل الحذف الناعم وتخزين تاريخ ووقت الحذف
         category.IsDeleted = true;

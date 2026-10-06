@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreApp.Application.DTOs;
 using StoreApp.Application.Interfaces;
+using FluentValidation;
 
 namespace StoreApp.Api.Controllers;
 
@@ -9,10 +10,12 @@ namespace StoreApp.Api.Controllers;
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
+    private readonly IValidator<CreateCategoryDto> _validator;
 
-    public CategoriesController(ICategoryService categoryService)
+    public CategoriesController(ICategoryService categoryService, IValidator<CreateCategoryDto> validator)
     {
         _categoryService = categoryService;
+        _validator = validator;
     }
 
     [HttpGet]
@@ -36,6 +39,12 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoryDto>> CreateCategory(CreateCategoryDto dto)
     {
+        var validationResult = await _validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
+        }
+
         var category = await _categoryService.CreateCategoryAsync(dto);
         return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
     }
@@ -43,10 +52,16 @@ public class CategoriesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCategory(int id, CreateCategoryDto dto)
     {
+        var validationResult = await _validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
+        }
+
         try
         {
             await _categoryService.UpdateCategoryAsync(id, dto);
-            return NoContent(); // 204 Success without content
+            return NoContent();
         }
         catch (Exception ex)
         {
@@ -60,7 +75,7 @@ public class CategoriesController : ControllerBase
         try
         {
             await _categoryService.DeleteCategoryAsync(id);
-            return NoContent(); // تم الحذف بنجاح (مع تسجيل تاريخ الحذف في قاعدة البيانات)
+            return NoContent();
         }
         catch (Exception ex)
         {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreApp.Application.DTOs;
 using StoreApp.Application.Interfaces;
+using FluentValidation;
 
 namespace StoreApp.Api.Controllers;
 
@@ -9,10 +10,12 @@ namespace StoreApp.Api.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
+    private readonly IValidator<CreateProductDto> _validator;
 
-    public ProductsController(IProductService productService)
+    public ProductsController(IProductService productService, IValidator<CreateProductDto> validator)
     {
         _productService = productService;
+        _validator = validator;
     }
 
     [HttpGet]
@@ -36,6 +39,12 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ProductDto>> CreateProduct(CreateProductDto dto)
     {
+        var validationResult = await _validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
+        }
+
         var product = await _productService.CreateProductAsync(dto);
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
@@ -43,6 +52,12 @@ public class ProductsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, CreateProductDto dto)
     {
+        var validationResult = await _validator.ValidateAsync(dto);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
+        }
+
         try
         {
             await _productService.UpdateProductAsync(id, dto);

@@ -24,8 +24,9 @@ public class ProductRepository : IProductRepository
 
     public async Task<Product?> GetBySkuAsync(string sku)
     {
+        // تم إزالة شرط !p.IsDeleted حتى لا يُسمح بإعادة استخدام رمز منتج محذوف مسبقاً
         return await _context.Products
-            .FirstOrDefaultAsync(p => p.SKU == sku && !p.IsDeleted);
+            .FirstOrDefaultAsync(p => p.SKU == sku);
     }
 
     public async Task<Product?> GetByIdAsync(int id)
