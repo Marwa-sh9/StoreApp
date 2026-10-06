@@ -7,11 +7,9 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context)
     {
-        // التأكد من تطبيق أي migrations معلقة
         await context.Database.MigrateAsync();
 
-        // التحقق مما إذا كانت الأقسام موجودة مسبقاً لمنع تكرار البيانات
-        if (!await context.Categories.AnyAsync())
+        if (!await context.Categories.IgnoreQueryFilters().AnyAsync())
         {
             var categories = new List<Category>
             {
@@ -24,10 +22,8 @@ public static class DbSeeder
             await context.SaveChangesAsync();
         }
 
-        // التحقق مما إذا كانت المنتجات موجودة مسبقاً
-        if (!await context.Products.AnyAsync())
+        if (!await context.Products.IgnoreQueryFilters().AnyAsync())
         {
-            // جلب الأقسام المضافة للحصول على الـ IDs الخاصة بها
             var alignersCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Clear Aligners");
             var careCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Dental Care Kits");
             var accessoriesCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Retainers & Accessories");
