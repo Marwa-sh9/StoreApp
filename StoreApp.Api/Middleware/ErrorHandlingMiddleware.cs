@@ -1,61 +1,59 @@
-﻿using System.Net;
-using System.Text.Json;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using StoreApp.Application.Exceptions;
 
-namespace StoreApp.Api.Middleware
+namespace StoreApp.Api.Middleware;
+
+public class ErrorHandlingMiddleware
 {
-    public class ErrorHandlingMiddleware
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ErrorHandlingMiddleware> _logger;
+
+    public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<ErrorHandlingMiddleware> _logger;
+        _next = next;
+        _logger = logger;
+    }
 
-        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
         {
-            _next = next;
-            _logger = logger;
+            await _next(context);
         }
-
-        public async Task InvokeAsync(HttpContext context)
+        catch (Exception ex)
         {
-            try
-            {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                await HandleExceptionAsync(context, ex);
-            }
+            await HandleExceptionAsync(context, ex);
         }
+    }
 
-        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        var (status, title, detail) = exception switch
         {
-            context.Response.ContentType = "application/json";
-            var response = context.Response;
+            NotFoundException => (StatusCodes.Status404NotFound, "Resource not found", exception.Message),
+            ConflictException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
+            _ => (StatusCodes.Status500InternalServerError, "Server error", "An internal server error occurred.")
+        };
 
-            var message = exception.Message;
+        if (status == StatusCodes.Status500InternalServerError)
+            _logger.LogError(exception, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
+        else
+            _logger.LogWarning("Handled exception ({Status}): {Message}", status, exception.Message);
 
-            switch (exception)
-            {
-                case NotFoundException:
-                    response.StatusCode = (int)HttpStatusCode.NotFound; // 404
-                    break;
-                case ConflictException:
-                    response.StatusCode = (int)HttpStatusCode.Conflict; // 409
-                    break;
-                default:
-                    response.StatusCode = (int)HttpStatusCode.InternalServerError; // 500
-                    message = "An internal server error occurred.";
-                    break;
-            }
+        if (context.Response.HasStarted) return;
 
-            var errorResponse = new
-            {
-                success = false,
-                message = message
-            };
+        context.Response.Clear();
 
-            var result = JsonSerializer.Serialize(errorResponse);
-            return response.WriteAsync(result);
-        }
+        var problem = new ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Detail = detail,
+            Instance = context.Request.Path
+        };
+
+        context.Response.StatusCode = status;
+        await context.Response.WriteAsJsonAsync(problem, (JsonSerializerOptions?)null, "application/problem+json");
     }
 }

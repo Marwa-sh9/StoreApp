@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StoreApp.Application.DTOs;
 using StoreApp.Application.Interfaces;
-using FluentValidation;
 
 namespace StoreApp.Api.Controllers;
 
@@ -10,59 +9,39 @@ namespace StoreApp.Api.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
-    private readonly IValidator<CreateProductDto> _validator;
 
-    public ProductsController(IProductService productService, IValidator<CreateProductDto> validator)
+    public ProductsController(IProductService productService)
     {
         _productService = productService;
-        _validator = validator;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
     {
-        var products = await _productService.GetAllProductsAsync();
-        return Ok(products);
+        return Ok(await _productService.GetAllProductsAsync());
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<ProductDto>> GetProduct(int id)
     {
-        var product = await _productService.GetProductByIdAsync(id);
-        if (product == null)
-        {
-            return NotFound();
-        }
-        return Ok(product);
+        return Ok(await _productService.GetProductByIdAsync(id));
     }
 
     [HttpPost]
     public async Task<ActionResult<ProductDto>> CreateProduct(CreateProductDto dto)
     {
-        var validationResult = await _validator.ValidateAsync(dto);
-        if (!validationResult.IsValid)
-        {
-            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
-        }
-
         var product = await _productService.CreateProductAsync(dto);
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateProduct(int id, CreateProductDto dto)
     {
-        var validationResult = await _validator.ValidateAsync(dto);
-        if (!validationResult.IsValid)
-        {
-            return BadRequest(validationResult.Errors.Select(x => x.ErrorMessage));
-        }
-
         await _productService.UpdateProductAsync(id, dto);
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
         await _productService.DeleteProductAsync(id);

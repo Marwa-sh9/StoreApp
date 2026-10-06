@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StoreApp.Application.DTOs;
+﻿namespace StoreApp.Application.DTOs;
 
 public class CategoryDto
 {
@@ -14,11 +8,6 @@ public class CategoryDto
 }
 
 public class CreateCategoryDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-}
-public class UpdateCategoryDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

@@ -1,7 +1,7 @@
-﻿using StoreApp.Application.DTOs;
-using StoreApp.Application.Interfaces;
+﻿using Store.Domain.Entities;
+using StoreApp.Application.DTOs;
 using StoreApp.Application.Exceptions;
-using Store.Domain.Entities;
+using StoreApp.Application.Interfaces;
 
 namespace StoreApp.Application.Services;
 
@@ -19,106 +19,91 @@ public class ProductService : IProductService
     public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
     {
         var products = await _productRepository.GetAllAsync();
-        return products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            SKU = p.SKU,
-            Price = p.Price,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category?.Name
-        });
+        return products.Select(ToDto);
     }
 
-    public async Task<ProductDto?> GetProductByIdAsync(int id)
+    public async Task<ProductDto> GetProductByIdAsync(int id)
     {
-        var p = await _productRepository.GetByIdAsync(id);
-        if (p == null) return null;
+        var product = await _productRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException("Product not found.");
 
-        return new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            SKU = p.SKU,
-            Price = p.Price,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category?.Name
-        };
+        return ToDto(product);
     }
 
     public async Task<ProductDto> CreateProductAsync(CreateProductDto dto)
     {
-        // التحقق من تكرار الـ SKU وإرجاع Conflict (409)
-        var existingProduct = await _productRepository.GetBySkuAsync(dto.SKU);
-        if (existingProduct != null)
+        // Duplicate SKU -> 409 (includes soft-deleted products).
+        if (await _productRepository.GetBySkuAsync(dto.SKU) != null)
         {
             throw new ConflictException("A product with this SKU already exists.");
         }
 
-        // التأكد من أن الـ CategoryId يشير لتصنيف موجود و غير محذوف
-        var category = await _categoryRepository.GetByIdAsync(dto.CategoryId);
-        if (category == null || category.IsDeleted)
-        {
-            throw new NotFoundException("The specified category does not exist or is deleted.");
-        }
+        var category = await GetActiveCategoryOrThrowAsync(dto.CategoryId);
 
         var product = new Product
         {
             Name = dto.Name,
             SKU = dto.SKU,
             Price = dto.Price,
-            CategoryId = dto.CategoryId
+            QuantityInStock = dto.QuantityInStock,
+            CategoryId = dto.CategoryId,
+            Category = category
         };
 
         await _productRepository.AddAsync(product);
+        await _productRepository.SaveChangesAsync();
 
-        return new ProductDto
-        {
-            Id = product.Id,
-            Name = product.Name,
-            SKU = product.SKU,
-            Price = product.Price,
-            CategoryId = product.CategoryId,
-            CategoryName = category.Name
-        };
+        return ToDto(product);
     }
 
     public async Task UpdateProductAsync(int id, CreateProductDto dto)
     {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null) throw new NotFoundException("Product not found");
+        var product = await _productRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException("Product not found.");
 
-        var existingProductWithSku = await _productRepository.GetBySkuAsync(dto.SKU);
-        if (existingProductWithSku != null && existingProductWithSku.Id != id)
+        var productWithSameSku = await _productRepository.GetBySkuAsync(dto.SKU);
+        if (productWithSameSku != null && productWithSameSku.Id != id)
         {
             throw new ConflictException("A product with this SKU already exists.");
         }
 
-        // التأكد من أن التصنيف موجود وغير محذوف عند التحديث
-        var category = await _categoryRepository.GetByIdAsync(dto.CategoryId);
-        if (category == null || category.IsDeleted)
-        {
-            throw new NotFoundException("The specified category does not exist or is deleted.");
-        }
+        var category = await GetActiveCategoryOrThrowAsync(dto.CategoryId);
 
         product.Name = dto.Name;
         product.SKU = dto.SKU;
         product.Price = dto.Price;
-        product.CategoryId = dto.CategoryId;
+        product.QuantityInStock = dto.QuantityInStock;
+        product.Category = category;
 
-        _productRepository.Update(product);
         await _productRepository.SaveChangesAsync();
     }
 
     public async Task DeleteProductAsync(int id)
     {
-        var product = await _productRepository.GetByIdAsync(id);
-        if (product == null) throw new NotFoundException("Product not found");
+        var product = await _productRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException("Product not found.");
 
         product.IsDeleted = true;
         product.DeletedAt = DateTime.UtcNow;
 
-        _productRepository.Update(product);
         await _productRepository.SaveChangesAsync();
     }
+
+    private async Task<Category> GetActiveCategoryOrThrowAsync(int categoryId)
+    {
+        // The repository already excludes soft-deleted categories.
+        return await _categoryRepository.GetByIdAsync(categoryId)
+            ?? throw new NotFoundException("The specified category does not exist or is deleted.");
+    }
+
+    private static ProductDto ToDto(Product p) => new()
+    {
+        Id = p.Id,
+        Name = p.Name,
+        SKU = p.SKU,
+        Price = p.Price,
+        QuantityInStock = p.QuantityInStock,
+        CategoryId = p.CategoryId,
+        CategoryName = p.Category?.Name
+    };
 }
